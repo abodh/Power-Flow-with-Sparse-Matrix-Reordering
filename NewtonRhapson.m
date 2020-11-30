@@ -18,14 +18,21 @@ function [Volt, Angle, error_avg] = ...
             pq_bus_id, Y_next);
         
         % reorder Jacobian
-        [Jacob_sparse_ordered, ordering, original] = Sparse_reordering(Jacob_sparse, Scheme);
+        [Jacob_sparse_ordered, ordering_idx, original_idx] = ...
+            Sparse_reordering(Jacob_sparse, Scheme);
         
         % calculate power mismatch
         mismatch = power_mismatch(Ps, Qs, Y_next, V, delta, n_bus,...
             pq_bus_id);
         
+        % orders the mismatches according to the ordering scheme
+        mismatch = mismatch(ordering_idx);
+                
         % find the error [del_delta | del_V]
-        error = croutLU(Jacob_sparse, mismatch);
+        error = Sparse_LU(Jacob_sparse_ordered, mismatch);
+        
+        % error must be in original order for proper calculation 
+        error = error(original_idx);
         
         % update V and delta
         delta(2:end) = delta(2:end) + error(1 : n_bus-1);

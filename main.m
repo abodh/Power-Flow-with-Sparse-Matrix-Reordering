@@ -98,7 +98,7 @@ while (Q_lim_status)
 
     % Q-limit check
     [Q_lim_status, bus_data] = Qlim(V_final, Angle_final, bus_data, ...
-        G, B, base_MW, pv_bus_id, n_bus);
+        Y_next, base_MW, pv_bus_id, n_bus);
     if (Q_lim_status)
         V_flat = V_final;
         delta_flat = Angle_final;
