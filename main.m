@@ -66,6 +66,7 @@ base_MW = 100;
                             
 %% 3,4,5. Calculating Jacobian Matrix, LU factorization, and NR power flow
 
+tic
 Q_lim_status = 1;
 while (Q_lim_status)
     
@@ -103,7 +104,7 @@ while (Q_lim_status)
         delta_flat = Angle_final;
     end
 end
-
+toc
 % %% 6. Fast decoupled power flow
 % [Volt_FD, Angle_FD, error_avg_FD] = ...
 %     FastDecoupledPF(tolerance, from, to, n_branch, n_bus, n_pv, n_pq, ...
