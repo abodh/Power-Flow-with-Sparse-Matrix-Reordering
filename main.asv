@@ -10,9 +10,9 @@ format short % to display less significant digits in the result
 %% 1. Reading bus and branch data in common data format
 % external function to extract the data from IEEE common data format
 
-System = "IEEE14";
-bus_path = 'IEEE14bus_data/bus_data.txt';
-branch_path = 'IEEE14bus_data/branch_data.txt';
+System = "IEEE";
+bus_path = 'IEEE30bus_data/bus_data.txt';
+branch_path = 'IEEE30bus_data/branch_data.txt';
 [bus_imp, branch_imp, bus_data, branch_data] = ...
     data_extraction(bus_path, branch_path,System);
 
@@ -114,7 +114,7 @@ end
 
 % NRLF Voltage
 
-function plotting(Volt, Angle)
+function plots = plotting(Volt, Angle)
     figure('color', [1,1,1])
     str = "bus 1";
     for i = 1: length(Volt)
