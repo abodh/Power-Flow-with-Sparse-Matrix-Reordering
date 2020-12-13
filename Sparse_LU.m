@@ -1,4 +1,4 @@
-function error_VD = Sparse_LU(A_next,A_first, b, orders)
+function [error_VD, L_next, U_next] = Sparse_LU(A_next,A_first, b, orders)
 
     % calculate the number of rows/cols in the Jacobian
     N = max(A_next(:,3));

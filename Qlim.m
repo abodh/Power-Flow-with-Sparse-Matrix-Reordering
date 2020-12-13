@@ -30,7 +30,9 @@ function [Q_lim_status, bus_data] = Qlim(Volt, Angle, bus_data, Y_next,...
     check_id_min = pv_bus_id(find(Q_g(pv_bus_id) < Q_min(pv_bus_id))); 
     if isempty(check_id_max) && isempty(check_id_min)
         Q_lim_status = 0;
-        fprintf("Power flow ran successfully without hitting Q-limits \n")        
+        fprintf("------------------------------------------------------\n")
+        fprintf("Power flow ran successfully without hitting Q-limits \n")
+        fprintf("------------------------------------------------------\n")
     else
         bus_data.data(check_id_max,9) = bus_data.data(check_id_max,12);
         bus_data.data(check_id_min,9) = bus_data.data(check_id_min,13);

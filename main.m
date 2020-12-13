@@ -1,5 +1,5 @@
 %{
-Newton Rhapson Power Flow with Sparse Reordering
+Newton Rhapson Power Flow with Sparse Re-ordering
 Author: Abodh Poudyal
 Last updated: Dec 1, 2020
 %}
@@ -7,24 +7,41 @@ clear;
 clc;
 format short % to display less significant digits in the result 
 
-%% 1. Reading bus and branch data in common data format
-% external function to extract the data from IEEE common data format
+%% Initializations
 
-System = "IEEE14";
-bus_path = 'IEEE14bus_data/bus_data.txt';
-branch_path = 'IEEE14bus_data/branch_data.txt';
-[bus_imp, branch_imp, bus_data, branch_data] = ...
-    data_extraction(bus_path, branch_path,System);
+% select the system on which the power flow should be performed
+% currently works for 'IEEE14' and 'IEEE30'
+System = "IEEE-30";
+
+% iterate unless power mismatch < 0.01 (tolerance)
+tolerance = 0.01;
+
+% base power
+base_MW = 100;
 
 %{
     Sparse Ordering Scheme
     0 : Tinney zero
     1 : Tinney one
-    2 : Tinney two
+    2 : Tinney two (not completed yet)
 %}
 
-Scheme = 0;
-    
+Scheme = 1;
+
+if Scheme < 2
+    fprintf("Tinney %d ordering scheme is being used ... \n", Scheme)
+else 
+    fprintf("No ordering is being done \n")
+end
+
+%% 1. Reading bus and branch data in common data format
+
+% external function to extract the data from IEEE common data format
+bus_path = strcat(System,'bus_data/bus_data.txt');
+branch_path = strcat(System,'bus_data/branch_data.txt');
+[bus_imp, branch_imp, bus_data, branch_data] = ...
+    data_extraction(bus_path, branch_path,System);
+
 %{ 
 to reduce the computational complexity, we will only compute 
 for existing branches
@@ -45,28 +62,43 @@ V_flat = bus_data.data(:,11);
 V_flat(find(V_flat == 0)) = 1;
 delta_flat = zeros(length(V_flat),1);
 
-% V = V_flat;
-% delta = delta_flat;
-
 % number of buses in the entire system
 n_bus = length(bus_data.data(:,3));
 
 % number of branches
 n_branch = length(branch_imp);
 
-% iterate unless power mismatch < 0.01 (tolerance)
-tolerance = 0.01;
-
-% base power
-base_MW = 100;
-
 %% 2. Calculating the Y-bus matrix
+
+%{
+* storage table is the table of the form:
+Index | Value | NROW | NCOL | NIR | NIC
+
+* For A_next: 
+    Index : index of the stored non-zero element
+    value : value of the non-zero element in A
+     NROW : row index of non-zero element in A
+     NCOL : column index of non-zero element in A
+      NIR : the index of the next non-zero element in the row
+      NIC : the index of the next non-zero element in the column 
+
+* For A_first: 
+    Index : index of the stored non-zero element
+      FIR : the index of the first non-zero element in the row
+      FIC : the index of the first non-zero element in the column 
+
+Reference:
+"Computational Methods for Electric Power Systems" by Mariesa L. Crow for
+in-depth explanation"
+ 
+%}
+
+% Y-bus sparse storage
 [Y_next, Y_first] = Ybus_sparse(n_bus, n_branch, branch_imp, bus_imp,...
                                 from, to);
                             
 %% 3,4,5. Calculating Jacobian Matrix, LU factorization, and NR power flow
 
-tic
 Q_lim_status = 1;
 while (Q_lim_status)
     
@@ -87,14 +119,14 @@ while (Q_lim_status)
     pv_bus_id = find(bus_data.data(:,3) == 2);
 
     % Newton Rhapson Power Flow 
-    [Volt, Angle, error_avg] = ...
+    [Volt, Angle, error_avg, L_next, U_next, J_next, J_ordered_next] = ...
         NewtonRhapson(tolerance, n_bus, n_pv, n_pq, pq_bus_id, V_flat, ...
         delta_flat, Y_next, Y_first, Ps, Qs, Scheme);
     
     V_final = Volt(:,end);
     Angle_final = Angle(:,end);
     
-    plotting(Volt, Angle)
+    plot_states(Volt, Angle)
     
     % Q-limit check
     [Q_lim_status, bus_data] = Qlim(V_final, Angle_final, bus_data, ...
@@ -104,7 +136,55 @@ while (Q_lim_status)
         delta_flat = Angle_final;
     end
 end
-toc
+
+%{
+ calculated as -> nnz in Q(L+U) - nnz in J - J (subtracting common non 
+ zeros that is already in J) 
+%}
+Fills = (size(L_next)+size(U_next)-size(J_next))*[1;0] - max(J_next(:,3));
+
+%% Results
+fprintf("\n")
+fprintf("---------------------------------------------\n")
+fprintf("--------------- SUMMARY ---------------------\n")
+fprintf("---------------------------------------------\n")
+fprintf("System = %s bus system \n",System)
+fprintf("Total non-zeroes before fills = %d \n",size(J_next)*[1;0]);
+fprintf("Total fills = %d \n",Fills);
+fprintf("Total non-zeroes after fills = %d \n",Fills + size(J_next)*[1;0]);
+fprintf("%% of non-zeroes = %.2f%%",((Fills + size(J_next)*[1;0])/...
+    (max(L_next(:,3))^2)*100));
+fprintf("\n")
+
+% fprintf("---------------------------------------------\n")
+% fprintf("--------------- POWER FLOW ------------------\n")
+% fprintf("---------------------------------------------\n")
+% 
+% fprintf("Voltage  Angle Voltage Angle \n")
+% fprintf("---------------------------------------------\n")
+% collect = [bus_data.data(:,4),bus_data.data(:,5),V_final,Angle_final*180/pi];
+% collect
+
+figure('color', [1,1,1])
+aH=axes;
+scatter(aH, J_ordered_next(:,3),J_ordered_next(:,4),40,'filled');
+aH.YDir = 'reverse';
+aH.XLim = [0 max(J_ordered_next(:,3))+1];
+aH.YLim = [0 max(J_ordered_next(:,3))+1];
+% aH.PlotBoxAspectRatio = [1 1 1];
+title ('Jacobian')
+grid minor
+
+figure('color', [1,1,1])
+aH=axes;
+scatter(aH,[L_next(:,3);U_next(:,3)],[L_next(:,4);U_next(:,4)],40,'filled');
+aH.YDir = 'reverse';
+aH.XLim = [0 max(L_next(:,3))+1];
+aH.YLim = [0 max(L_next(:,3))+1];
+% aH.PlotBoxAspectRatio = [1 1 1];
+title ('Q')
+grid minor
+
 % %% 6. Fast decoupled power flow
 % [Volt_FD, Angle_FD, error_avg_FD] = ...
 %     FastDecoupledPF(tolerance, from, to, n_branch, n_bus, n_pv, n_pq, ...
@@ -113,9 +193,8 @@ toc
 
 %% plots of the result
 
-% NRLF Voltage
-
-function plotting(Volt, Angle)
+function plot_states(Volt, Angle)
+    % NRLF Voltage
     figure('color', [1,1,1])
     str = "bus 1";
     for i = 1: length(Volt)
@@ -148,7 +227,7 @@ function plotting(Volt, Angle)
     set(gca,'gridlinestyle','--','fontname','Times New Roman','fontsize',12);
     lgd = legend (str, 'NumColumns', 3);
     lgd.FontSize = 9;
-    hold off
+    hold off   
 
     % % FDLF Voltage
     % figure('color', [1,1,1])

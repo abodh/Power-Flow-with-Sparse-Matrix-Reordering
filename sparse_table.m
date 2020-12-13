@@ -138,7 +138,7 @@ classdef sparse_table
                     return
                     
                 else
-                    % if nothing works move ahead by keeping NIx to FIx
+                    % if nothing works move ahead by assigning NIx to FIx
                     FIR = A(FIR,5); % A(,5) is NIR
                     FIC = A(FIC,6); % A(,6) is NIC
                 end

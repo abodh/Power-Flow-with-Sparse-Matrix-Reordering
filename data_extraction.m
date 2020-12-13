@@ -7,7 +7,7 @@ function [bus_imp, branch_imp, bus_data, branch_data] = ...
     %import the data for each buses
     bus_data = importdata(bus_path);
     
-    if (System=="IEEE30")
+    if (System=="IEEE-30")
         bus_data.data = bus_data.data(:,2:end);
     end
     
